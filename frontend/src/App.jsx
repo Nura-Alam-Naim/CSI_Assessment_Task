@@ -28,12 +28,13 @@ function App() {
   const fetchData = useCallback(async (abortSignal) => {
     try {
       const qs = sourceFilter ? `&source_id=${encodeURIComponent(sourceFilter)}` : '';
+      const cb = `&_t=${Date.now()}`;
       const [sumRes, pendRes, excRes, procRes, mqttRes] = await Promise.all([
-        fetch(`/api/state?view=summary${qs}`, { signal: abortSignal }).then(r => r.json()),
-        fetch(`/api/state?view=pending${qs}`, { signal: abortSignal }).then(r => r.json()),
-        fetch(`/api/state?view=exceptions${qs}`, { signal: abortSignal }).then(r => r.json()),
-        fetch(`/api/state?view=processed${qs}`, { signal: abortSignal }).then(r => r.json()),
-        fetch('/api/mqtt/status', { signal: abortSignal }).then(r => r.json())
+        fetch(`/api/state?view=summary${qs}${cb}`, { signal: abortSignal }).then(r => r.json()),
+        fetch(`/api/state?view=pending${qs}${cb}`, { signal: abortSignal }).then(r => r.json()),
+        fetch(`/api/state?view=exceptions${qs}${cb}`, { signal: abortSignal }).then(r => r.json()),
+        fetch(`/api/state?view=processed${qs}${cb}`, { signal: abortSignal }).then(r => r.json()),
+        fetch(`/api/mqtt/status?_t=${Date.now()}`, { signal: abortSignal }).then(r => r.json())
       ]);
       setSummary(sumRes);
       setPending(pendRes);
