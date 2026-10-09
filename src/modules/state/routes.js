@@ -22,6 +22,7 @@ router.delete('/exceptions', async (req, res, next) => {
 });
 
 router.get('/', async (req, res, next) => {
+  require('fs').appendFileSync('state_logs.txt', new Date().toISOString() + ' GET /api/state ' + JSON.stringify(req.query) + '\n');
   try {
     const view = req.query.view || 'summary';
     const sourceId = req.query.source_id || null;
