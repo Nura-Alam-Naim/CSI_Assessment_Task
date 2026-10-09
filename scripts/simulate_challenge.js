@@ -30,8 +30,8 @@ client.on('message', (topic, message) => {
   console.log(JSON.stringify(JSON.parse(message.toString()), null, 2));
   
   if (topic === TOPICS.response) {
-    console.log('Got response, exiting...');
-    setTimeout(() => process.exit(0), 1000);
+    console.log('Got response, waiting 5 seconds before next challenge...');
+    setTimeout(sendChallenge, 5000);
   }
 });
 

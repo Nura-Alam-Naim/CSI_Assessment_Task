@@ -6,7 +6,8 @@
   "scripts": {
     "server": "node src/server.js",
     "client": "cd frontend && npm run dev",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "simulator": "node scripts/simulate_challenge.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\" \"npm run simulator\"",
     "build": "cd frontend && npm run build",
     "start": "node src/server.js",
     "migrate": "node migrations/run.js",
