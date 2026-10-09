@@ -4,6 +4,7 @@ function App() {
   const [summary, setSummary] = useState(null);
   const [pending, setPending] = useState([]);
   const [exceptions, setExceptions] = useState([]);
+  const [processed, setProcessed] = useState([]);
   const [mqttStatus, setMqttStatus] = useState(null);
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -27,15 +28,17 @@ function App() {
   const fetchData = useCallback(async (abortSignal) => {
     try {
       const qs = sourceFilter ? `&source_id=${encodeURIComponent(sourceFilter)}` : '';
-      const [sumRes, pendRes, excRes, mqttRes] = await Promise.all([
+      const [sumRes, pendRes, excRes, procRes, mqttRes] = await Promise.all([
         fetch(`/api/state?view=summary${qs}`, { signal: abortSignal }).then(r => r.json()),
         fetch(`/api/state?view=pending${qs}`, { signal: abortSignal }).then(r => r.json()),
         fetch(`/api/state?view=exceptions${qs}`, { signal: abortSignal }).then(r => r.json()),
+        fetch(`/api/state?view=processed${qs}`, { signal: abortSignal }).then(r => r.json()),
         fetch('/api/mqtt/status', { signal: abortSignal }).then(r => r.json())
       ]);
       setSummary(sumRes);
       setPending(pendRes);
       setExceptions(excRes);
+      setProcessed(procRes);
       setMqttStatus(mqttRes);
     } catch (err) {
       if (err.name !== 'AbortError') {
@@ -263,18 +266,18 @@ function App() {
         {/* Premium Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
           {[
-            { label: 'Net Total', value: summary?.net_total || 0, gradient: 'from-indigo-500/20 to-purple-500/20', border: 'border-indigo-500/30', text: 'text-white' },
-            { label: 'Processed', value: summary?.processed_events || 0, gradient: 'from-[#131B2F] to-[#131B2F]', border: 'border-[#1E293B]', text: 'text-[#94A3B8]' },
-            { label: 'Pending Ack', value: summary?.pending_ack || 0, gradient: 'from-amber-500/10 to-orange-500/10', border: 'border-amber-500/30', text: 'text-amber-400' },
-            { label: 'Unresolved', value: summary?.unresolved || 0, gradient: 'from-rose-500/10 to-pink-500/10', border: 'border-rose-500/30', text: 'text-rose-400' },
-            { label: 'Duplicates', value: summary?.duplicates || 0, gradient: 'from-[#131B2F] to-[#131B2F]', border: 'border-[#1E293B]', text: 'text-[#94A3B8]', onClear: async () => {
+            { label: 'Net Total', value: summary?.net_total || 0, gradient: 'from-indigo-500/20 to-purple-500/20', border: 'border-indigo-500/30', text: 'text-white', onClick: () => setActiveTab('processed') },
+            { label: 'Processed', value: summary?.processed_events || 0, gradient: 'from-[#131B2F] to-[#131B2F]', border: 'border-[#1E293B]', text: 'text-[#94A3B8]', onClick: () => setActiveTab('processed') },
+            { label: 'Pending Ack', value: summary?.pending_ack || 0, gradient: 'from-amber-500/10 to-orange-500/10', border: 'border-amber-500/30', text: 'text-amber-400', onClick: () => setActiveTab('pending') },
+            { label: 'Unresolved', value: summary?.unresolved || 0, gradient: 'from-rose-500/10 to-pink-500/10', border: 'border-rose-500/30', text: 'text-rose-400', onClick: () => setActiveTab('exceptions') },
+            { label: 'Duplicates', value: summary?.duplicates || 0, gradient: 'from-[#131B2F] to-[#131B2F]', border: 'border-[#1E293B]', text: 'text-[#94A3B8]', onClick: () => setActiveTab('exceptions'), onClear: async () => {
                 await fetch(`/api/state/duplicates${sourceFilter ? '?source_id=' + sourceFilter : ''}`, { method: 'DELETE' });
                 fetchData();
               }
             },
-            { label: 'Conflicts', value: summary?.conflicts || 0, gradient: 'from-rose-500/10 to-red-500/10', border: 'border-rose-500/30', text: 'text-rose-400' }
+            { label: 'Conflicts', value: summary?.conflicts || 0, gradient: 'from-rose-500/10 to-red-500/10', border: 'border-rose-500/30', text: 'text-rose-400', onClick: () => setActiveTab('exceptions') }
           ].map((m, i) => (
-            <div key={i} className={`p-6 rounded-3xl border ${m.border} bg-gradient-to-br ${m.gradient} backdrop-blur-xl shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300 flex flex-col justify-between`}>
+            <div key={i} className={`p-6 rounded-3xl border ${m.border} bg-gradient-to-br ${m.gradient} backdrop-blur-xl shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300 flex flex-col justify-between ${m.onClick ? 'cursor-pointer' : ''}`} onClick={m.onClick}>
               <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-[0.02] rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-700"></div>
               <div className="flex justify-between items-start mb-3">
                 <div className="text-[10px] font-bold text-[#64748B] uppercase tracking-widest">{m.label}</div>
@@ -302,6 +305,9 @@ function App() {
                 </button>
                 <button onClick={() => setActiveTab('exceptions')} className={`flex-1 py-3 px-6 rounded-2xl text-sm font-bold transition-all duration-300 ${activeTab === 'exceptions' ? 'bg-[#1E293B] text-white shadow-md' : 'text-[#64748B] hover:text-[#E2E8F0] hover:bg-[#1E293B]/50'}`}>
                   Exceptions <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === 'exceptions' ? 'bg-rose-500/20 text-rose-400' : 'bg-[#0B0F19] text-[#64748B]'}`}>{exceptions.length}</span>
+                </button>
+                <button onClick={() => setActiveTab('processed')} className={`flex-1 py-3 px-6 rounded-2xl text-sm font-bold transition-all duration-300 ${activeTab === 'processed' ? 'bg-[#1E293B] text-white shadow-md' : 'text-[#64748B] hover:text-[#E2E8F0] hover:bg-[#1E293B]/50'}`}>
+                  Processed <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === 'processed' ? 'bg-teal-500/20 text-teal-400' : 'bg-[#0B0F19] text-[#64748B]'}`}>{processed.length}</span>
                 </button>
               </div>
               
@@ -375,6 +381,15 @@ function App() {
                   </div>
                 ) : (
                   <div className="p-6">
+                    <div className="mb-6 flex justify-between items-center bg-[#0B0F19]/80 p-4 rounded-2xl border border-[#1E293B]">
+                       <h3 className="text-white font-bold tracking-widest uppercase text-sm">System Exceptions</h3>
+                       <button onClick={async () => {
+                         await fetch(`/api/state/exceptions${sourceFilter ? '?source_id=' + sourceFilter : ''}`, { method: 'DELETE' });
+                         fetchData();
+                       }} className="px-6 py-2 rounded-xl text-xs font-bold transition-all duration-300 bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white">
+                         Solve Exceptions
+                       </button>
+                    </div>
                     <div className="rounded-2xl overflow-hidden border border-[#1E293B]">
                       <table className="min-w-full divide-y divide-[#1E293B] text-sm">
                         <thead className="bg-[#0B0F19]">

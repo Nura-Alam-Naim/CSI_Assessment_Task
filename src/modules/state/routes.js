@@ -3,6 +3,24 @@ const router = express.Router();
 const service = require('./service');
 const { AppError } = require('../../shared/errors');
 
+router.delete('/duplicates', async (req, res, next) => {
+  try {
+    await service.delete_duplicates(req.query.source_id);
+    res.json({ success: true });
+  } catch(e) {
+    next(e);
+  }
+});
+
+router.delete('/exceptions', async (req, res, next) => {
+  try {
+    await service.delete_exceptions(req.query.source_id);
+    res.json({ success: true });
+  } catch(e) {
+    next(e);
+  }
+});
+
 router.get('/', async (req, res, next) => {
   try {
     const view = req.query.view || 'summary';
@@ -18,6 +36,9 @@ router.get('/', async (req, res, next) => {
         break;
       case 'exceptions':
         data = await service.get_exceptions(sourceId);
+        break;
+      case 'processed':
+        data = await service.get_processed(sourceId);
         break;
       default:
         throw new AppError('INVALID_VIEW', 400);

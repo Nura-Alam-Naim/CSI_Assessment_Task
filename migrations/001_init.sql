@@ -1,4 +1,3 @@
-CREATE TABLE schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
 
 CREATE TABLE production_sources (
   source_id    text PRIMARY KEY,

@@ -41,7 +41,7 @@ function startWorker() {
   client = mqtt.connect(config.mqttUrl, {
     clientId,
     clean: true,
-    protocolVersion: 5, // or 4 (3.1.1)
+    protocolVersion: 4, // Downgrade to MQTT 3.1.1 for wider compatibility
     reconnectPeriod: 1000, // Starts at 1s, backoff logic can be managed or default handled by mqtt.js
     will: {
       topic: TOPICS.status,

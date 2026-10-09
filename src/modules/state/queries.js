@@ -116,9 +116,53 @@ async function deleteDuplicates(sourceId = null) {
   await pool.query(query, params);
 }
 
+async function getProcessed(sourceId = null) {
+  let paramClause = '';
+  const params = [];
+  if (sourceId) {
+    paramClause = 'AND source_id = $1';
+    params.push(sourceId);
+  }
+
+  const query = `
+    SELECT event_id, source_id, type, quantity, event_time, received_at, acknowledged_at, voided_by_event_id
+    FROM production_events
+    WHERE status='ACCEPTED'
+    ${paramClause}
+    ORDER BY received_at DESC
+    LIMIT 100
+  `;
+  const { rows } = await pool.query(query, params);
+  return rows.map(r => ({
+    event_id: r.event_id,
+    source_id: r.source_id,
+    type: r.type,
+    quantity: r.quantity,
+    event_time: r.event_time,
+    received_at: r.received_at,
+    acknowledged_at: r.acknowledged_at,
+    voided: !!r.voided_by_event_id
+  }));
+}
+
+async function deleteExceptions(sourceId = null) {
+  let queryAttempts = "DELETE FROM submission_attempts WHERE classification IN ('REJECTED', 'CONFLICT')";
+  let queryEvents = "DELETE FROM production_events WHERE status = 'PENDING_REFERENCE'";
+  const params = [];
+  if (sourceId) {
+    queryAttempts += " AND (source_id = $1 OR source_id IS NULL)";
+    queryEvents += " AND source_id = $1";
+    params.push(sourceId);
+  }
+  await pool.query(queryAttempts, params);
+  await pool.query(queryEvents, params);
+}
+
 module.exports = {
   getSummary,
   getPending,
   getExceptions,
-  deleteDuplicates
+  deleteDuplicates,
+  getProcessed,
+  deleteExceptions
 };
