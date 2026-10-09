@@ -60,15 +60,28 @@ npm run dev
 ### 4.1 Submit Events (`POST /api/events`)
 Handles batch and single event submissions. Invalid items are rejected individually while valid items in the same batch succeed (Partial Failure tolerance).
 
-**Submit a standard COUNT event:**
+**Submit a standard COUNT event (e.g. 450, Accepted):**
 ```bash
 curl -X POST http://localhost:3000/api/events \
   -H 'Content-Type: application/json' \
   -d '{
     "source_id": "LINE-01",
-    "event_id": "EV-101",
+    "event_id": "EV-450",
     "type": "COUNT",
-    "quantity": 5,
+    "quantity": 450,
+    "event_time": "2026-10-09T10:30:00Z"
+  }'
+```
+
+**Submit a standard COUNT event over 500 (Rejected):**
+```bash
+curl -X POST http://localhost:3000/api/events \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "source_id": "LINE-01",
+    "event_id": "EV-501",
+    "type": "COUNT",
+    "quantity": 501,
     "event_time": "2026-10-09T10:30:00Z"
   }'
 ```
@@ -88,11 +101,16 @@ curl -X POST http://localhost:3000/api/events \
 ```
 
 ### 4.2 Query State (`GET /api/state`)
-Fetch real-time metrics, pending events, and exceptions directly from the database views.
+Fetch real-time metrics, pending events, and exceptions directly from the database views. The dashboard features a Source Filter bar that allows filtering these views, and displays a seventh indicator card for "Rejected Submissions".
 
-**Get Global Summary:**
+**Get Global Summary (Includes `rejected_submissions`):**
 ```bash
 curl "http://localhost:3000/api/state?view=summary"
+```
+
+**Get Filtered Summary for LINE-01:**
+```bash
+curl "http://localhost:3000/api/state?view=summary&source_id=LINE-01"
 ```
 
 **Get Pending Events (Requires Manual Acknowledgment):**
@@ -106,6 +124,27 @@ Moves events out of the supervisor's pending queue.
 curl -X POST http://localhost:3000/api/ack \
   -H 'Content-Type: application/json' \
   -d '{"event_ids":["EV-101"]}'
+```
+
+### 4.4 Sample MQTT Response
+The MQTT response state includes the seven fields:
+```json
+{
+  "challenge_id": "CH-123",
+  "status": "COMPLETED",
+  "results": [
+    { "event_id": "EV-501", "status": "REJECTED", "reason": "COUNT quantity 501 exceeds the maximum of 500 per event" }
+  ],
+  "state": {
+    "net_total": 0,
+    "processed_events": 0,
+    "pending_ack": 0,
+    "unresolved": 0,
+    "duplicates": 0,
+    "conflicts": 0,
+    "rejected_submissions": 1
+  }
+}
 ```
 
 ---

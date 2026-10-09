@@ -44,3 +44,25 @@ Currently implemented as a Modular Monolith, this system is structurally prepare
 1. **Events Service**: Takes ownership of the `production_events` table and exposes gRPC/HTTP endpoints for payload ingestion.
 2. **State & Read-Model Service**: Listens to an external message broker (e.g., Kafka) instead of the Node.js `EventEmitter`. It would consume `EVENT_ACCEPTED` messages to build materialized views for the frontend dashboard.
 3. **MQTT Gateway Service**: An isolated Node.js worker that only subscribes to the broker, validates MQTT envelopes, and pushes them onto a Kafka queue for the Events Service to process, fully separating network I/O from heavy database transactions.
+
+## 7. Change Request FSE-01 CR1
+### Changes Made
+| Module | Change |
+| --- | --- |
+| `events/validation` | Added `MAX_COUNT_QUANTITY = 500` and validation rejection logic. |
+| `state/queries` | Added `rejected_submissions` to the `attemptsQuery` to automatically count `REJECTED` attempts. |
+| `tests/api.test.js` | Added T1-T6 and T14 test coverage for quantity limit rules and Phase 3 summary tests. |
+| `frontend` | Upgraded `App.jsx` to feature a `datalist`-backed text input filter for `source_id`, full URL parameter persistence, an active filter chip, a stale-response guard via `AbortController`, and a distinct seventh "Rejected Submissions" indicator card on the dashboard. |
+
+### Why No Rewrite Was Needed
+The application architecture was successfully leveraged without requiring structural rewrites:
+- The 500 cap is a strict validation rule owned by one pure function (`validate_event`). Since both REST and MQTT pipelines already route through this validation logic, the rule applied globally with zero handler modifications.
+- The `rejected_submissions` metric is a simple aggregate over the `submission_attempts` table, which already perfectly stores every attempt alongside its `classification` and `source_id`.
+- The MQTT handler `handle_mqtt_challenge` uses `get_summary()` directly to build the response state, meaning the new field was injected immediately without touching the MQTT logic.
+- The frontend filter leverages an API parameter (`source_id`) that already existed.
+
+### Assumptions
+- **A1**: `rejected_submissions` counts `REJECTED` attempts from REST and MQTT, not "rejected-on-resolve" ledger rows.
+- **A2**: The 500 cap is not retroactive; pre-existing accepted COUNTs stay valid.
+- **A3**: Filter is an exact-match on `source_id`, trimmed, case-sensitive. The source list is derived from existing responses without requiring a new endpoint.
+- **A4**: Rejected `event_id`s remain reusable because no ledger row exists.

@@ -24,3 +24,9 @@ The human developer (Candidate) performed the following critical oversight:
 3. **Route Compatibility Checks**: Supervised the migration of Express routing logic (specifically wildcards) to ensure compatibility with Express v5.
 4. **Validation Auditing**: Manually checked that the AI did not hallucinate business logic and strictly followed the exact-once counting and out-of-order VOID resolution logic.
 5. **Documentation & Deliverables**: Directed the AI to heavily expand upon technical decisions, assumptions, and edge-case handling in the markdown documentation.
+
+### Change Request FSE-01 CR1 Session
+- The Antigravity agent was prompted with the `CHANGE_PLAN.md` instructions.
+- The AI autonomously implemented the 500 cap in `validation.js`, updated the SQL query for `rejected_submissions`, and appended test scenarios in `tests/api.test.js`.
+- The AI also engineered the frontend filter input with `datalist`, `AbortController` stale-response logic, and the "Rejected Submissions" indicator card without human modifications.
+- **Human Review**: The Candidate verified that the existing business rules (duplicate, void, mqtt state injection) were not damaged and architectural boundaries were respected.
