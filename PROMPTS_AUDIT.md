@@ -1,0 +1,17 @@
+# Prompt & Action Audit Log
+
+This document serves as a record of the human prompts issued to the AI Assistant and the corresponding implementation work executed.
+
+| # | Human Prompt / Request | AI Assistant Work Executed |
+|---|---|---|
+| 1 | *"analyze the megaplan. we will eork with node, express, postgres, mqtt... change the stack of the megaplan and then make a new plan for this project"* | Analyzed the provided brief and updated the architecture to use Node.js, Express, PostgreSQL, and MQTT. |
+| 2 | *"we will use express.js, not typescript... use react and vite for frontend. include automated test set for every thing... make the plan again and then we can procceed"* | Scrapped TypeScript in favor of vanilla JS (ESM). Mandated React/Vite for the frontend, and added a strict requirement for `vitest` / `supertest` coverage for all APIs. |
+| 3 | *"in the megaplan, there was a file structure. use exactly that one. the megaplan should contain al the requirement. update the plan"* | Re-aligned the custom plan to strictly follow the precise directory layout (`src/modules/events`, etc.) defined in the original `FSE01_MEGAPLAN.md`. |
+| 4 | *"phase 2 then" / "procceed"* | Built the `postgres` schema (migrations), implemented the complex concurrency event service (`process_count`, `process_void`), and REST APIs. |
+| 5 | *"can you set yourself in any mode where i dont have to give you yes every time?"* | Switched into a continuous autonomous mode to execute the remaining backend features (State, Ack, MQTT Worker) rapidly without interrupting for permission. |
+| 6 | *"add concurrently in the main directory... also run tests. if fails fix the codes. then also check the megaplan for any undone work."* | Installed `concurrently` for unified local dev. Diagnosed and fixed Express 5.x routing incompatibility in tests. Realized documentation was pending from the megaplan and wrote the initial versions. |
+| 7 | *"are you taking data from the MQTT server? it was mandatory"* | Reassured the user and mapped out the exact code paths (`worker.js` -> `service.js`) where the backend intercepts, parses, and persists MQTT envelopes. |
+| 8 | *"open the frontend and check for bugs and the necessary requirements for this project is fulfilled or not"* | Audited `App.jsx` against Section 9 of the brief. Identified missing UI elements (auto-refresh toggle, source dropdown filter, batch submission sample, JSON formatter) and implemented them. Rebuilt the frontend. |
+| 9 | *"is there are files waiting for git push?"* | Checked `git status` and executed `git commit` and `git push` to upload the newly improved React frontend to GitHub. |
+| 10 | *"...the files are created. but make them more descriptive and comprehensive"* (referring to README, TECH_EXPL, AI_USAGE, .env) | Massively expanded all documentation. Created `DATABASE_SETUP.md` and `REQUIREMENT_DECISIONS.md`. Added highly descriptive JSDoc comments to `tests/api.test.js` to explain the business resilience being tested. Pushed everything to GitHub. |
+| 11 | *"make me a file containg all my promts and your brief work against the promts. then convert the plan in docs/pdf"* | Created this `PROMPTS_AUDIT.md` file and utilized a PDF generator to convert the `PROJECT_PLAN.md` into a downloadable PDF format. |
