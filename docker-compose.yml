@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: fse01_postgres
+    environment:
+      POSTGRES_USER: fse01_user
+      POSTGRES_PASSWORD: fse01_password
+      POSTGRES_DB: fse01_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  postgres_test:
+    image: postgres:16
+    container_name: fse01_postgres_test
+    environment:
+      POSTGRES_USER: fse01_test_user
+      POSTGRES_PASSWORD: fse01_test_password
+      POSTGRES_DB: fse01_test_db
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
