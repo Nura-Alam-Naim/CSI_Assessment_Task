@@ -1,5 +1,7 @@
 const crypto = require('crypto');
 
+const MAX_COUNT_QUANTITY = 500;
+
 function isValidDate(dateString) {
   const d = new Date(dateString);
   // Strictly ISO-8601 with timezone: must parse to a valid date and must contain 'Z' or '+' or '-' in the time part
@@ -52,6 +54,9 @@ function validate_event(raw) {
     if (!Number.isInteger(raw.quantity) || raw.quantity <= 0) {
       return { ok: false, reason: "quantity must be a positive integer for COUNT", partial };
     }
+    if (raw.quantity > MAX_COUNT_QUANTITY) {
+      return { ok: false, reason: `COUNT quantity ${raw.quantity} exceeds the maximum of ${MAX_COUNT_QUANTITY} per event`, partial };
+    }
     if (raw.target_event_id !== undefined && raw.target_event_id !== null) {
       return { ok: false, reason: "target_event_id must be null or undefined for COUNT", partial };
     }
@@ -80,6 +85,7 @@ function validate_event(raw) {
 }
 
 module.exports = {
+  MAX_COUNT_QUANTITY,
   validate_event,
   hashNormalized
 };

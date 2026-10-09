@@ -133,6 +133,89 @@ describe('POST /api/events (Core Business Logic)', () => {
     const res = await request(app).post('/api/events').send("not an object");
     expect(res.status).toBe(400);
   });
+
+  /**
+   * TEST T1: COUNT 450
+   */
+  it('T1: should accept a valid COUNT 450 event', async () => {
+    const res = await request(app).post('/api/events').send({ source_id: 'L1', event_id: 'E-450', type: 'COUNT', quantity: 450, event_time: '2026-10-09T10:30:00Z' });
+    expect(res.body.results[0].status).toBe('ACCEPTED');
+    const state = await request(app).get('/api/state?view=summary');
+    expect(state.body.net_total).toBe(450);
+  });
+
+  /**
+   * TEST T2: COUNT 500 (boundary)
+   */
+  it('T2: should accept a COUNT 500 event (boundary)', async () => {
+    const res = await request(app).post('/api/events').send({ source_id: 'L1', event_id: 'E-500', type: 'COUNT', quantity: 500, event_time: '2026-10-09T10:30:00Z' });
+    expect(res.body.results[0].status).toBe('ACCEPTED');
+  });
+
+  /**
+   * TEST T3: COUNT 501
+   */
+  it('T3: should reject COUNT 501 and mention 500 max', async () => {
+    const res = await request(app).post('/api/events').send({ source_id: 'L1', event_id: 'E-501', type: 'COUNT', quantity: 501, event_time: '2026-10-09T10:30:00Z' });
+    expect(res.body.results[0].status).toBe('REJECTED');
+    expect(res.body.results[0].reason).toContain('500');
+    const state = await request(app).get('/api/state?view=summary');
+    expect(state.body.net_total).toBe(0);
+    expect(state.body.processed_events).toBe(0);
+  });
+
+  /**
+   * TEST T4: Quantity edge set
+   */
+  it('T4: should handle quantity edge cases correctly', async () => {
+    const cases = [
+      { q: 1, expected: 'ACCEPTED' },
+      { q: 0, expected: 'REJECTED' },
+      { q: -5, expected: 'REJECTED' },
+      { q: 5.5, expected: 'REJECTED' },
+      { q: "5", expected: 'REJECTED' },
+      { q: 1000, expected: 'REJECTED' },
+    ];
+    let i = 0;
+    for (const c of cases) {
+      const res = await request(app).post('/api/events').send({ source_id: 'L1', event_id: `E-EDGE-${i++}`, type: 'COUNT', quantity: c.q, event_time: '2026-10-09T10:30:00Z' });
+      expect(res.body.results[0].status).toBe(c.expected);
+    }
+  });
+
+  /**
+   * TEST T5: Mixed batch
+   */
+  it('T5: should process mixed batch [100, 501, 200]', async () => {
+    const res = await request(app).post('/api/events').send([
+      { source_id: 'L1', event_id: 'E-MIX-1', type: 'COUNT', quantity: 100, event_time: '2026-10-09T10:30:00Z' },
+      { source_id: 'L1', event_id: 'E-MIX-2', type: 'COUNT', quantity: 501, event_time: '2026-10-09T10:30:00Z' },
+      { source_id: 'L1', event_id: 'E-MIX-3', type: 'COUNT', quantity: 200, event_time: '2026-10-09T10:30:00Z' }
+    ]);
+    expect(res.body.results[0].status).toBe('ACCEPTED');
+    expect(res.body.results[1].status).toBe('REJECTED');
+    expect(res.body.results[2].status).toBe('ACCEPTED');
+    const state = await request(app).get('/api/state?view=summary');
+    expect(state.body.net_total).toBe(300);
+  });
+
+  /**
+   * TEST T6: Rejected id can be reused
+   */
+  it('T6: should allow reusing an event_id that was previously rejected', async () => {
+    const res1 = await request(app).post('/api/events').send({ source_id: 'L1', event_id: 'E-REUSE', type: 'COUNT', quantity: 501, event_time: '2026-10-09T10:30:00Z' });
+    expect(res1.body.results[0].status).toBe('REJECTED');
+    const res2 = await request(app).post('/api/events').send({ source_id: 'L1', event_id: 'E-REUSE', type: 'COUNT', quantity: 5, event_time: '2026-10-09T10:30:00Z' });
+    expect(res2.body.results[0].status).toBe('ACCEPTED');
+  });
+
+  /**
+   * TEST T14: REST status codes for batch with 501
+   */
+  it('T14: should return HTTP 200 when batch contains rejected items', async () => {
+    const res = await request(app).post('/api/events').send({ source_id: 'L1', event_id: 'E-T14', type: 'COUNT', quantity: 501, event_time: '2026-10-09T10:30:00Z' });
+    expect(res.status).toBe(200);
+  });
 });
 
 describe('POST /api/ack (Supervisor Review)', () => {
