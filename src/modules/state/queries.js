@@ -27,7 +27,8 @@ async function getSummary(sourceId = null) {
   const attemptsQuery = `
     SELECT
       COUNT(*) FILTER (WHERE classification='DUPLICATE')::int AS duplicates,
-      COUNT(*) FILTER (WHERE classification='CONFLICT')::int AS conflicts
+      COUNT(*) FILTER (WHERE classification='CONFLICT')::int AS conflicts,
+      COUNT(*) FILTER (WHERE classification='REJECTED')::int AS rejected_submissions
     FROM submission_attempts
     WHERE 1=1 ${paramClause}
   `;
@@ -105,8 +106,19 @@ async function getExceptions(sourceId = null) {
   return rows;
 }
 
+async function deleteDuplicates(sourceId = null) {
+  let query = "DELETE FROM submission_attempts WHERE classification = 'DUPLICATE'";
+  const params = [];
+  if (sourceId) {
+    query += " AND source_id = $1";
+    params.push(sourceId);
+  }
+  await pool.query(query, params);
+}
+
 module.exports = {
   getSummary,
   getPending,
-  getExceptions
+  getExceptions,
+  deleteDuplicates
 };

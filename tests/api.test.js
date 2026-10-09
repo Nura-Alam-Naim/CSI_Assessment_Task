@@ -275,3 +275,66 @@ describe('GET /api/mqtt/status (Telemetry)', () => {
     expect(res.body.candidate_id).toBeDefined();
   });
 });
+
+import { handle_mqtt_challenge } from '../src/modules/mqtt/service';
+
+describe('Phase 3 Tests (rejected_submissions)', () => {
+  it('T7: rejected_submissions = 0 on empty DB', async () => {
+    const res = await request(app).get('/api/state?view=summary');
+    expect(res.body.rejected_submissions).toBe(0);
+  });
+
+  it('T8, T9: Counts only REJECTED and supports source_id filter', async () => {
+    // 1 REJECTED LINE-01
+    await request(app).post('/api/events').send({ source_id: 'LINE-01', event_id: 'E-R1', type: 'COUNT', quantity: 501, event_time: '2026-10-09T10:30:00Z' });
+    // 1 REJECTED LINE-02
+    await request(app).post('/api/events').send({ source_id: 'LINE-02', event_id: 'E-R2', type: 'COUNT', quantity: 501, event_time: '2026-10-09T10:30:00Z' });
+    // 1 ACCEPTED LINE-01
+    await request(app).post('/api/events').send({ source_id: 'LINE-01', event_id: 'E-A1', type: 'COUNT', quantity: 10, event_time: '2026-10-09T10:30:00Z' });
+    // 1 DUPLICATE LINE-01
+    await request(app).post('/api/events').send({ source_id: 'LINE-01', event_id: 'E-A1', type: 'COUNT', quantity: 10, event_time: '2026-10-09T10:30:00Z' });
+    // 1 PENDING VOID LINE-01
+    await request(app).post('/api/events').send({ source_id: 'LINE-01', event_id: 'E-V1', type: 'VOID', target_event_id: 'E-MISSING', event_time: '2026-10-09T10:30:00Z' });
+    
+    // T8: Counts only REJECTED (Unfiltered)
+    const all = await request(app).get('/api/state?view=summary');
+    expect(all.body.rejected_submissions).toBe(2);
+    expect(all.body.duplicates).toBe(1);
+    expect(all.body.unresolved).toBe(1);
+
+    // T9: source_id filter
+    const l1 = await request(app).get('/api/state?view=summary&source_id=LINE-01');
+    expect(l1.body.rejected_submissions).toBe(1);
+    const l2 = await request(app).get('/api/state?view=summary&source_id=LINE-02');
+    expect(l2.body.rejected_submissions).toBe(1);
+    const unknown = await request(app).get('/api/state?view=summary&source_id=UNKNOWN');
+    expect(unknown.body.rejected_submissions).toBe(0);
+  });
+
+  it('T11, T12: MQTT cap and replay', async () => {
+    let publishedMsg = null;
+    const mockPublish = async (msg) => { publishedMsg = msg; };
+    const payload = {
+      challenge_id: 'CH-1',
+      events: [
+        { source_id: 'L1', event_id: 'E-MQTT-1', type: 'COUNT', quantity: 450, event_time: '2026-10-09T10:30:00Z' },
+        { source_id: 'L1', event_id: 'E-MQTT-2', type: 'COUNT', quantity: 501, event_time: '2026-10-09T10:30:00Z' }
+      ]
+    };
+    
+    // T11
+    const res = await handle_mqtt_challenge(Buffer.from(JSON.stringify(payload)), mockPublish);
+    expect(res.ok).toBe(true);
+    expect(publishedMsg.status).toBe('COMPLETED');
+    expect(publishedMsg.results[0].status).toBe('ACCEPTED');
+    expect(publishedMsg.results[1].status).toBe('REJECTED');
+    expect(publishedMsg.state.rejected_submissions).toBeGreaterThanOrEqual(1);
+    expect(publishedMsg.state.net_total).toBe(450);
+    expect(Object.keys(publishedMsg.state)).toHaveLength(7);
+
+    // T12
+    const res2 = await handle_mqtt_challenge(Buffer.from(JSON.stringify(payload)), mockPublish);
+    expect(res2.ok).toBe(true);
+    expect(res2.stored).toBe(true);
+  });
+});
