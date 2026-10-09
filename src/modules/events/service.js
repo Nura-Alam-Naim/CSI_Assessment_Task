@@ -137,7 +137,7 @@ async function process_void(tx, v, hash, attemptBase, ctx) {
   }
 
   if (target.voided_by_event_id) {
-    const reason = \`COUNT already reversed by \${target.voided_by_event_id}\`;
+    const reason = `COUNT already reversed by ${target.voided_by_event_id}`;
     await repo.insertSubmissionAttempt(tx, { ...attemptBase, classification: 'REJECTED', error: reason });
     return { event_id: v.event_id, status: 'REJECTED', message: reason };
   }
